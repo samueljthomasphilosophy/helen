@@ -1,0 +1,86 @@
+# Publishes the live site whenever something lands on `main`.
+#
+# The built site is pushed to the `gh-pages` branch, which GitHub Pages serves at
+#   https://<owner>.github.io/<repo>/
+#
+# Nothing here is specific to one account or repository — the owner and repository
+# names are read from the workflow context, so this file needs no edits after a
+# fork or a rename.
+#
+# `static/.nojekyll` is copied into the build and matters: GitHub Pages runs Jekyll
+# over branch-published sites, and Jekyll skips every directory beginning with an
+# underscore. SvelteKit puts all its JS and CSS in `_app/`, so without that file the
+# site deploys unstyled.
+#
+# Pull-request previews live in `gh-pages` too, under `pr-preview/pr-<number>/`,
+# and are managed by the separate `pr-preview.yml` workflow. That is why the
+# deploy step below sets `clean-exclude: pr-preview/` — without it, every merge
+# to `main` would wipe out the previews of all other open pull requests.
+
+name: Deploy to GitHub Pages
+
+on:
+  push:
+    branches: [main]
+  # Lets you re-run a deploy by hand from the Actions tab, without pushing.
+  workflow_dispatch:
+
+# Only one production deploy at a time. `cancel-in-progress: false` because a
+# half-finished deploy is worse than a slightly delayed one.
+concurrency:
+  group: deploy-pages
+  cancel-in-progress: false
+
+permissions:
+  contents: write # required to push the built site to the gh-pages branch
+
+jobs:
+  deploy:
+    name: Build and publish
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+
+    steps:
+      - name: Check out the repository
+        uses: actions/checkout@v4
+
+      - name: Set up Node
+        uses: actions/setup-node@v4
+        with:
+          node-version-file: .nvmrc # single source of truth, shared with contributors
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci # exact versions from package-lock.json, unlike `npm install`
+
+      - name: Type-check
+        run: npm run check
+
+      - name: Work out the base path
+        # GitHub Pages serves a repository named "<owner>.github.io" at the root
+        # of the domain, and every other repository from a subdirectory named
+        # after it. SvelteKit has to be told which, or the built pages will look
+        # for their styles and links in the wrong place.
+        env:
+          OWNER: ${{ github.repository_owner }}
+          REPO: ${{ github.event.repository.name }}
+        run: |
+          if [ "${REPO,,}" = "${OWNER,,}.github.io" ]; then
+            echo "BASE_PATH=" >> "$GITHUB_ENV"
+          else
+            echo "BASE_PATH=/$REPO" >> "$GITHUB_ENV"
+          fi
+
+      - name: Build
+        run: npm run build
+
+      - name: Publish to gh-pages
+        uses: JamesIves/github-pages-deploy-action@v4
+        with:
+          branch: gh-pages
+          folder: build
+          clean: true
+          clean-exclude: pr-preview/ # keep open PR previews alive
+          # Do not force-push. A preview deploy may be writing to gh-pages at the
+          # same time; without this the two races and one silently loses commits.
+          force: false

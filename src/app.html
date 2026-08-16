@@ -1,0 +1,27 @@
+<!doctype html>
+<html lang="en">
+    <head>
+        <meta charset="utf-8" />
+        <link rel="icon" href="%sveltekit.assets%/favicon.ico" />
+        <meta name="viewport" content="width=device-width, initial-scale=1" />
+        <title> Helenic Philosophy </title>
+        %sveltekit.head%
+    </head>
+    <body data-sveltekit-preload-data="hover">
+        <script>
+            // Set the theme before anything paints, so a dark-mode visitor never sees a
+            // flash of the light background. The navbar's sun/moon buttons write the
+            // stored value; with nothing stored we follow the browser's preference.
+            try {
+                const stored = localStorage.getItem('theme');
+                const dark = stored
+                    ? stored === 'dark'
+                    : window.matchMedia('(prefers-color-scheme: dark)').matches;
+                if (dark) document.body.classList.add('dark');
+            } catch {
+                // Private-browsing modes can make localStorage throw; light theme is fine.
+            }
+        </script>
+        <div style="display: contents">%sveltekit.body%</div>
+    </body>
+</html>

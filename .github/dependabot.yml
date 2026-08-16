@@ -1,0 +1,21 @@
+# Opens pull requests to keep dependencies current. Each one gets a preview
+# build from the PR Preview workflow, so you can see the site before merging.
+version: 2
+updates:
+  - package-ecosystem: github-actions
+    directory: /
+    schedule:
+      interval: monthly
+    commit-message:
+      prefix: 'ci:'
+
+  - package-ecosystem: npm
+    directory: /
+    schedule:
+      interval: monthly
+    commit-message:
+      prefix: 'deps:'
+    groups:
+      # One pull request for all routine updates instead of a dozen.
+      minor-and-patch:
+        update-types: [minor, patch]

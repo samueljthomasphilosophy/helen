@@ -1,0 +1,239 @@
+# Builds every pull request, publishes a live preview of the site, and posts a
+# comment on the pull request with the link — or with the error output if the
+# build broke.
+#
+# Previews are published into the `gh-pages` branch under `pr-preview/pr-<number>/`,
+# alongside the real site at the branch root:
+#
+#   gh-pages branch                served at
+#     /                      -->   https://<owner>.github.io/<repo>/
+#     /pr-preview/pr-42/     -->   https://<owner>.github.io/<repo>/pr-preview/pr-42/
+#
+# Nothing here is specific to one account or repository — the owner and repository
+# names are read from the workflow context, so this file needs no edits after a
+# fork or a rename.
+#
+# The preview directory is deleted automatically when the pull request is closed
+# or merged.
+#
+# Note on forks: GitHub deliberately gives pull requests opened from a forked
+# repository a read-only token, so this workflow cannot publish a preview or post
+# a comment for them. Those pull requests still get a full build and a pass/fail
+# check — the results appear in the run's summary page instead. To get previews,
+# a contributor needs push access so they can open pull requests from a branch in
+# this repository rather than from a fork.
+
+name: PR Preview
+
+on:
+  pull_request:
+    branches: [main]
+    types: [opened, synchronize, reopened, closed]
+
+# One run per pull request; a new push supersedes an in-flight run.
+concurrency:
+  group: pr-preview-${{ github.event.number }}
+  cancel-in-progress: true
+
+permissions:
+  contents: write # to publish the preview into the gh-pages branch
+  pull-requests: write # to post/update the comment
+
+jobs:
+  # ---------------------------------------------------------------------------
+  # Build the site, publish the preview, and report back on the pull request.
+  # ---------------------------------------------------------------------------
+  preview:
+    name: Build and publish preview
+    if: github.event.action != 'closed'
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+
+    env:
+      # Turn off colour codes so the captured logs paste cleanly into a comment.
+      NO_COLOR: '1'
+      FORCE_COLOR: '0'
+      # True only when the pull request comes from a branch in this repository,
+      # which is the only case where the token can write.
+      CAN_PUBLISH: ${{ github.event.pull_request.head.repo.full_name == github.repository }}
+      # BASE_PATH and PREVIEW_URL are derived below, in "Work out the preview path".
+
+    steps:
+      - name: Check out the pull request
+        uses: actions/checkout@v4
+
+      - name: Set up Node
+        uses: actions/setup-node@v4
+        with:
+          node-version-file: .nvmrc
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Work out the preview path
+        # GitHub Pages serves a repository named "<owner>.github.io" at the root
+        # of the domain, and every other repository from a subdirectory named
+        # after it. Both the build's base path and the link we post have to match,
+        # or the preview loads without styles.
+        env:
+          OWNER: ${{ github.repository_owner }}
+          REPO: ${{ github.event.repository.name }}
+          PR: ${{ github.event.number }}
+        run: |
+          if [ "${REPO,,}" = "${OWNER,,}.github.io" ]; then
+            site_base=''
+          else
+            site_base="/$REPO"
+          fi
+          {
+            echo "BASE_PATH=${site_base}/pr-preview/pr-${PR}"
+            echo "PREVIEW_URL=https://${OWNER,,}.github.io${site_base}/pr-preview/pr-${PR}/"
+          } >> "$GITHUB_ENV"
+
+      # `continue-on-error` on the next two steps so that a failure still reaches
+      # the comment step below instead of aborting the run with no explanation.
+      # The job is failed deliberately at the very end.
+
+      - name: Type-check
+        id: check
+        continue-on-error: true
+        run: |
+          set -o pipefail
+          npm run check 2>&1 | tee check.log
+
+      - name: Build
+        id: build
+        continue-on-error: true
+        # BASE_PATH comes from the step above.
+        run: |
+          set -o pipefail
+          npm run build 2>&1 | tee build.log
+
+      - name: Publish preview
+        id: publish
+        if: steps.build.outcome == 'success' && env.CAN_PUBLISH == 'true'
+        uses: rossjrw/pr-preview-action@v1
+        with:
+          source-dir: build
+          preview-branch: gh-pages
+          umbrella-dir: pr-preview
+          action: deploy
+          # We post a single richer comment ourselves, further down.
+          comment: false
+
+      - name: Compose report
+        if: always()
+        env:
+          CHECK_OUTCOME: ${{ steps.check.outcome }}
+          BUILD_OUTCOME: ${{ steps.build.outcome }}
+          PUBLISH_OUTCOME: ${{ steps.publish.outcome }}
+        run: |
+          set -euo pipefail
+
+          # Emit a collapsible block containing the tail of a log file.
+          # Truncated to keep well under GitHub's 65,536-character comment limit.
+          emit_log() {
+            title="$1"; file="$2"; open="$3"
+            [ -s "$file" ] || return 0
+            if [ "$open" = "open" ]; then
+              printf '<details open><summary><b>%s</b></summary>\n\n' "$title"
+            else
+              printf '<details><summary>%s</summary>\n\n' "$title"
+            fi
+            # Four backticks so that any backticks inside the log cannot escape.
+            printf '````text\n'
+            tail -n 120 "$file" | tail -c 8000
+            printf '\n````\n\n</details>\n\n'
+          }
+
+          {
+            if [ "$BUILD_OUTCOME" != "success" ]; then
+              echo "### ❌ Preview build failed"
+            elif [ "$CHECK_OUTCOME" != "success" ]; then
+              echo "### ⚠️ Built, but the type-check reported errors"
+            else
+              echo "### ✅ Preview build passed"
+            fi
+            echo
+
+            if [ "$PUBLISH_OUTCOME" = "success" ]; then
+              echo "**Preview:** ${PREVIEW_URL:-}"
+              echo
+              echo "It can take a minute or so for the page to go live. The preview updates on every push to this pull request, and is deleted when the pull request is closed or merged."
+            elif [ "$BUILD_OUTCOME" != "success" ]; then
+              echo "No preview was published, because the build did not succeed. The output is below."
+            elif [ "$CAN_PUBLISH" != "true" ]; then
+              echo "The site built successfully, but no hosted preview was published: pull requests opened from a fork get a read-only token, so this workflow cannot publish on their behalf. Ask a maintainer for push access to get previews."
+            else
+              echo "The site built successfully, but publishing the preview did not complete. See the workflow run for details."
+            fi
+            echo
+
+            # Errors expanded by default; a clean run stays collapsed.
+            if [ "$CHECK_OUTCOME" = "success" ]; then
+              emit_log "Type-check output" check.log closed
+            else
+              emit_log "Type-check output" check.log open
+            fi
+
+            if [ "$BUILD_OUTCOME" = "success" ]; then
+              emit_log "Build log" build.log closed
+            else
+              emit_log "Build log" build.log open
+            fi
+
+            echo "<sub>Updated for commit ${GITHUB_SHA:0:7} · <a href=\"${GITHUB_SERVER_URL}/${GITHUB_REPOSITORY}/actions/runs/${GITHUB_RUN_ID}\">full log</a></sub>"
+          } > comment.md
+
+          # Also surface the report on the run's own summary page. This is the
+          # only place fork contributors can see it, since we cannot comment there.
+          cat comment.md >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Comment on the pull request
+        if: always() && env.CAN_PUBLISH == 'true'
+        uses: marocchino/sticky-pull-request-comment@v2
+        with:
+          # A stable header means repeated pushes edit this one comment rather
+          # than piling up a new one each time.
+          header: pr-preview
+          path: comment.md
+
+      - name: Fail the check if anything went wrong
+        if: steps.check.outcome != 'success' || steps.build.outcome != 'success'
+        run: |
+          echo "The type-check or build failed — see the pull request comment or the log above."
+          exit 1
+
+  # ---------------------------------------------------------------------------
+  # Tear the preview down once the pull request is closed or merged.
+  # ---------------------------------------------------------------------------
+  cleanup:
+    name: Remove preview
+    if: github.event.action == 'closed' && github.event.pull_request.head.repo.full_name == github.repository
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+
+    steps:
+      - name: Check out the repository
+        uses: actions/checkout@v4
+
+      - name: Delete the preview directory
+        # Tolerate the case where no preview was ever published (e.g. the build
+        # failed on every push), so the comment below still gets updated.
+        continue-on-error: true
+        uses: rossjrw/pr-preview-action@v1
+        with:
+          preview-branch: gh-pages
+          umbrella-dir: pr-preview
+          action: remove
+          comment: false
+
+      - name: Update the pull request comment
+        uses: marocchino/sticky-pull-request-comment@v2
+        with:
+          header: pr-preview
+          message: |
+            ### Preview removed
+
+            This pull request is closed, so its preview has been taken down.
