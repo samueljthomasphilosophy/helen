@@ -1,6 +1,6 @@
 <script lang="ts">
     import Contents from '$lib/contents.svelte'
-    import photo from '../../assets/peter2.jpg'
+    import photo from '../../assets/HelenE-480.webp'
 </script>
 
 <div class="container mx-auto flex flex-col xl:flex-row">
@@ -13,9 +13,9 @@
         <!-- ABOUT -->
         <div id="about" class="section">
             <h2> About Me </h2>
-            <img class="mb-4" src={photo} alt="peter griffin in the living room" />
+            <img class="mb-4" src={photo} alt="a transsexual shorty" />
             <p class="text-xl pb-1 dark:text-gray-200">
-                I go by Helen around friends and Mrs. TODO around state apparatchiks, authority figures, and the like.
+                I go by Helen around friends and Thomas around state apparatchiks, authority figures, and the like.
 
                 I am a PhD student and Graduate TA at the
                 <a class="text-blue-700 hover:underline" href="https://philosophy.arizona.edu/person/samuel-thomas"
