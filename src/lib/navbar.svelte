@@ -1,5 +1,5 @@
 <script lang="ts">
-    import logo from '../assets/peter1.webp'
+    import logo from '../assets/Sketch.jpg'
     import PhilPeople from '$lib/philpeople.svelte'
     import { base } from '$app/paths';
     import '@fortawesome/fontawesome-free/css/all.min.css'
@@ -111,7 +111,7 @@
             <!-- Left -->
             <div class="flex items-center pl-4">
                 <a class="cursor-pointer" href={`${base}/`} onclick={() => (open = false)}>
-                    <img class="h-10 object-cover" src={logo} alt="peter griffin standing">
+                    <img class="h-10 object-cover" src={logo} alt="a self portrait doodled in my moleskin">
                 </a>
             </div>
 
