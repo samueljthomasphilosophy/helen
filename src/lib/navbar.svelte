@@ -79,7 +79,7 @@
         <PhilPeople />{#if withLabels}PhilPeople{/if}
     </a>
     <a class="flex items-center gap-2 hover:text-blue-500 transition-colors duration-200"
-        href="mailto:samthomas@arizona.edu" aria-label="email link"
+        href="mailto:samuelthomas@arizona.edu" aria-label="email link"
         onclick={() => (open = false)}>
         <i class="fa-regular fa-envelope"></i>{#if withLabels}email{/if}
     </a>
