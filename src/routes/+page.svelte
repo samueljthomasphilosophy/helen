@@ -1,6 +1,6 @@
 <script lang="ts">
     import { base } from '$app/paths';
-    import portrait from '../assets/peter4.webp'
+    import portrait from '../assets/GWX.jpg'
 </script>
 
 <div class="container mx-auto">
@@ -8,7 +8,7 @@
 
         <!-- ABOUT -->
         <div id="about" class="section">
-            <img class="w-1/5 float-left mr-4 mb-4 rounded-lg" src={portrait} alt="peter griffin reading a book" />
+            <img class="w-1/5 float-left mr-4 mb-4 rounded-lg" src={portrait} alt="Playing the bass" />
             <h2> About Helen </h2>
             <p class="text-xl pb-1 dark:text-gray-200">
                 PhD student and Graduate TA at the
