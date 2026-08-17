@@ -14,7 +14,6 @@
                 PhD student and Graduate TA at the
                 <a class="text-blue-700 hover:underline" href="https://philosophy.arizona.edu/person/samuel-thomas"
                 >University of Arizona</a>,
-                </p> <p class="text-xl py-1">
                 and an adjunct in Political Science at <a class="text-blue-700 hover:underline" href="https://www.pima.edu/"
                 >Pima Community College</a>.
                 My main areas of study are in political philosophy and 19th century philosophy. I additionally have areas of concentration in environmental ethics, critical theory, and philosophy of law.
