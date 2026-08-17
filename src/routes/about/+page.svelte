@@ -1,6 +1,6 @@
 <script lang="ts">
     import Contents from '$lib/contents.svelte'
-    import photo from '../../assets/HelenE-480.wepb'
+    import photo from '../../assets/HelenE-480.webp'
 </script>
 
 <div class="container mx-auto flex flex-col xl:flex-row">
