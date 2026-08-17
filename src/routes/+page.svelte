@@ -13,8 +13,10 @@
             <p class="text-xl pb-1 dark:text-gray-200">
                 PhD student and Graduate TA at the
                 <a class="text-blue-700 hover:underline" href="https://philosophy.arizona.edu/person/samuel-thomas"
-                >University of Arizona</a>.
+                >University of Arizona</a>,
                 </p> <p class="text-xl py-1">
+                and an adjunct in Political Science at <a class="text-blue-700 hover:underline" href="https://www.pima.edu/"
+                >Pima Community College</a>.
                 Research interests include legal epistemology, linguistics, critical theory, and European history.
             </p>
         </div>
