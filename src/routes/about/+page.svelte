@@ -19,7 +19,9 @@
 
                 I am a PhD student and Graduate TA at the
                 <a class="text-blue-700 hover:underline" href="https://philosophy.arizona.edu/person/samuel-thomas"
-                >University of Arizona</a>.
+                >University of Arizona</a>,
+                as well as an adjunct in Political Science at <a class="text-blue-700 hover:underline" href="https://www.pima.edu/"
+                >Pima Community College</a>.
                 </p> <p class="text-xl py-1">
                 My present research interests revolve around applied political philosophy. Specifically, I am interested in what we should do to prevent or reverse democratic backsliding, what ethical limits there are on economic sanctions, and which types of political compromises are unjust. I have also written on the concept of ideology.
 
